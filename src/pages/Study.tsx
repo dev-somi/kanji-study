@@ -3,7 +3,7 @@ import { DrawPad, type DrawPadHandle } from '../components/DrawPad'
 import { Readings } from '../components/Readings'
 import { StrokeOrder } from '../components/StrokeOrder'
 import { GRADE_LABEL, loadStrokes } from '../lib/data'
-import { db } from '../lib/db'
+import { addExtraNew, db, getExtraNew, withExtraNew } from '../lib/db'
 import { gradeCard, undoGrade, type UndoToken } from '../lib/repo'
 import {
   buildQueue,
@@ -35,7 +35,6 @@ export function Study({ stage, mode, onExit }: { stage: Stage; mode: StudyMode; 
   const [left, setLeft] = useState({ learning: 0, review: 0, fresh: 0 })
   const [revealed, setRevealed] = useState(false)
   const [undo, setUndo] = useState<UndoToken | null>(null)
-  const [extraNew, setExtraNew] = useState(0)
   const [done, setDone] = useState(0)
   const [busy, setBusy] = useState(false)
   const [strokeCount, setStrokeCount] = useState(0)
@@ -50,7 +49,7 @@ export function Study({ stage, mode, onExit }: { stage: Stage; mode: StudyMode; 
       const now = Date.now()
       const rows = await db.cards.toArray()
       const logs = await db.logs.where('review').aboveOrEqual(dayStart(now, settings.dayStartHour)).toArray()
-      const s = { ...settings, newPerDay: { ...settings.newPerDay, [stage]: settings.newPerDay[stage] + extraNew } }
+      const s = withExtraNew(settings, await getExtraNew(settings.dayStartHour))
       const full = buildQueue({
         kanji,
         cards: new Map(rows.map((r) => [r.key, r])),
@@ -68,7 +67,7 @@ export function Study({ stage, mode, onExit }: { stage: Stage; mode: StudyMode; 
       setStrokeCount(0)
       pad.current?.clear()
     },
-    [kanji, settings, stage, mode, extraNew],
+    [kanji, settings, stage, mode],
   )
 
   useEffect(() => {
@@ -76,7 +75,7 @@ export function Study({ stage, mode, onExit }: { stage: Stage; mode: StudyMode; 
     // 획순 데이터 미리 받아두기
     if (stage === 'w') void loadStrokes().catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [extraNew])
+  }, [])
 
   const entry = current ? byChar.get(current.k) : undefined
   const intervals = useMemo(
@@ -210,7 +209,13 @@ export function Study({ stage, mode, onExit }: { stage: Stage; mode: StudyMode; 
           )}
           <div className="done-actions">
             {mode === 'new' && (
-              <button className="btn" onClick={() => setExtraNew((n) => n + 10)}>
+              <button
+                className="btn"
+                onClick={async () => {
+                  await addExtraNew(stage, 10, settings.dayStartHour)
+                  await advance()
+                }}
+              >
                 새 한자 10개 더
               </button>
             )}

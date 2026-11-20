@@ -1091,3 +1091,12 @@ kbd {
 .mode-tag.new {
   background: var(--new);
 }
+.mode-btn.more {
+  background: color-mix(in srgb, var(--new) 14%, var(--surface));
+  color: var(--new);
+  border: 1.5px dashed var(--new);
+}
+.more-link {
+  display: block;
+  margin: 0 0 8px auto;
+}

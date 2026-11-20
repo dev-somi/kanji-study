@@ -2,10 +2,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { buildQueue, dayKey, dayStart, filterQueue, State, todayCounts, type StudyMode } from '../lib/srs'
 import { useAppData } from '../lib/store'
 import { onSyncStatus, type SyncStatus } from '../lib/sync'
+import { addExtraNew } from '../lib/db'
 import { MATURE_STABILITY, STAGES, type Stage } from '../lib/types'
 
 export function Home({ onStudy, onSettings }: { onStudy: (s: Stage, m: StudyMode) => void; onSettings: () => void }) {
-  const { kanji, cards, settings, recentLogs } = useAppData()
+  const { kanji, cards, settings, studySettings, extraNew, recentLogs } = useAppData()
   const [now, setNow] = useState(() => Date.now())
   const [sync, setSync] = useState<SyncStatus>({ state: 'off' })
 
@@ -19,7 +20,7 @@ export function Home({ onStudy, onSettings }: { onStudy: (s: Stage, m: StudyMode
   const stats = useMemo(() => {
     const out = {} as Record<Stage, { review: number; fresh: number; started: number; mature: number; newAvailable: number }>
     for (const stage of STAGES) {
-      const q = buildQueue({ kanji, cards, stage, now, settings, counts: todayCounts(recentLogs, stage, now, settings.dayStartHour) })
+      const q = buildQueue({ kanji, cards, stage, now, settings: studySettings, counts: todayCounts(recentLogs, stage, now, settings.dayStartHour) })
       let started = 0
       let mature = 0
       for (const c of cards.values()) {
@@ -36,7 +37,7 @@ export function Home({ onStudy, onSettings }: { onStudy: (s: Stage, m: StudyMode
       }
     }
     return out
-  }, [kanji, cards, settings, recentLogs, now])
+  }, [kanji, cards, studySettings, recentLogs, now])
 
   const activity = useMemo(() => {
     const perDay = new Map<string, number>()
@@ -149,6 +150,11 @@ export function Home({ onStudy, onSettings }: { onStudy: (s: Stage, m: StudyMode
                 숙달(간격 21일+) {s.mature}
               </span>
             </div>
+            {s.fresh > 0 && (
+              <button className="link-btn small more-link" onClick={() => void addExtraNew(stage, 10, settings.dayStartHour)}>
+                + 새 한자 10개 더 추가{extraNew[stage] ? ` (오늘 +${extraNew[stage]})` : ''}
+              </button>
+            )}
             {stage === 'r' && s.newAvailable === 0 && s.started === 0 && settings.readUnlock === 'auto' && (
               <p className="muted small">쓰기 카드가 익으면(다음 복습 7일 이상) 여기 읽기 카드가 하나씩 열려요.</p>
             )}
@@ -158,13 +164,26 @@ export function Home({ onStudy, onSettings }: { onStudy: (s: Stage, m: StudyMode
                 <b>{s.review}</b>
                 <span className="mode-sub">{s.review === 0 ? '오늘 복습 끝' : '복습할 카드'}</span>
               </button>
-              <button className="mode-btn new" onClick={() => onStudy(stage, 'new')} disabled={s.fresh === 0}>
-                <span className="mode-name">새 한자</span>
-                <b>{s.fresh}</b>
-                <span className="mode-sub">
-                  {s.fresh === 0 ? (s.newAvailable === 0 ? '열린 카드 없음' : '오늘 할당량 끝') : '오늘 배울 카드'}
-                </span>
-              </button>
+              {s.fresh === 0 && s.newAvailable > 0 ? (
+                // 오늘 할당량을 다 했으면: 눌러서 10개 더
+                <button
+                  className="mode-btn new more"
+                  onClick={async () => {
+                    await addExtraNew(stage, 10, settings.dayStartHour)
+                    onStudy(stage, 'new')
+                  }}
+                >
+                  <span className="mode-name">새 한자</span>
+                  <b>+10</b>
+                  <span className="mode-sub">할당량 끝 · 10개 더 하기</span>
+                </button>
+              ) : (
+                <button className="mode-btn new" onClick={() => onStudy(stage, 'new')} disabled={s.fresh === 0}>
+                  <span className="mode-name">새 한자</span>
+                  <b>{s.fresh}</b>
+                  <span className="mode-sub">{s.fresh === 0 ? '열린 카드 없음' : '오늘 배울 카드'}</span>
+                </button>
+              )}
             </div>
           </section>
         )
