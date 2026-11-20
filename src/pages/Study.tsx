@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { DrawPad, type DrawPadHandle } from '../components/DrawPad'
+import { KanjiStructure } from '../components/KanjiStructure'
 import { Readings } from '../components/Readings'
 import { StrokeOrder } from '../components/StrokeOrder'
-import { GRADE_LABEL, loadStrokes } from '../lib/data'
+import { GRADE_LABEL, loadParts, loadStrokes } from '../lib/data'
 import { addExtraNew, db, getExtraNew, withExtraNew } from '../lib/db'
 import { gradeCard, undoGrade, type UndoToken } from '../lib/repo'
 import {
@@ -73,7 +74,8 @@ export function Study({ stage, mode, onExit }: { stage: Stage; mode: StudyMode; 
   useEffect(() => {
     void advance()
     // 획순 데이터 미리 받아두기
-    if (stage === 'w') void loadStrokes().catch(() => {})
+    void loadStrokes().catch(() => {})
+    void loadParts().catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -278,6 +280,7 @@ export function Study({ stage, mode, onExit }: { stage: Stage; mode: StudyMode; 
               )}
             </div>
             {revealed && <Readings e={entry} compact />}
+            {revealed && <KanjiStructure k={entry.k} collapsible />}
           </>
         ) : (
           <>
@@ -300,6 +303,7 @@ export function Study({ stage, mode, onExit }: { stage: Stage; mode: StudyMode; 
                   )}
                 </div>
                 {entry.en && <div className="muted small">{entry.en}</div>}
+                <KanjiStructure k={entry.k} collapsible />
               </div>
             )}
           </>

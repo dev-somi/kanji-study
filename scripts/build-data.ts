@@ -8,9 +8,11 @@
  *  출력
  *   - public/data/kanji.json
  *   - public/data/strokes.json
+ *   - public/data/parts.json   : 구성 요소 트리 + 부수 + 상용한자 밖 요소의 음·뜻
  */
 import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
+import { collectElements, loadRadicals, parseParts, resolveRadical, type PartOut, type RadicalOut } from './structure'
 
 const ROOT = join(import.meta.dirname, '..')
 const SRC = join(ROOT, 'data-src')
@@ -121,6 +123,7 @@ interface DicInfo {
   freq?: number
   ko: string[]
   en: string[]
+  rad?: number // 강희 부수 번호
 }
 function parseKanjidic(): Map<string, DicInfo> {
   const xml = readFileSync(join(SRC, 'kanjidic', 'kanjidic2.xml'), 'utf8')
@@ -131,7 +134,8 @@ function parseKanjidic(): Map<string, DicInfo> {
     const freq = block.match(/<freq>(\d+)<\/freq>/)?.[1]
     const ko = [...block.matchAll(/<reading r_type="korean_h">(.+?)<\/reading>/g)].map((m) => m[1])
     const en = [...block.matchAll(/<meaning>(.+?)<\/meaning>/g)].map((m) => m[1])
-    map.set(lit, { freq: freq ? parseInt(freq, 10) : undefined, ko, en })
+    const rad = block.match(/<rad_value rad_type="classical">(\d+)<\/rad_value>/)?.[1]
+    map.set(lit, { freq: freq ? parseInt(freq, 10) : undefined, ko, en, rad: rad ? parseInt(rad, 10) : undefined })
   }
   return map
 }
@@ -164,6 +168,9 @@ function main() {
   const wiki = parseWiki()
   const dic = parseKanjidic()
   const korean = loadKorean()
+  const radicals = loadRadicals(ROOT)
+  const partsOut: Record<string, { rad?: RadicalOut; parts: PartOut[] }> = {}
+  const elements = new Set<string>()
 
   // 학년 → 같은 학년 안에서는 빈도순 (빈도 없으면 뒤로)
   const sorted = [...wiki].sort((a, b) => {
@@ -195,6 +202,14 @@ function main() {
       const KNOWN_EXCEPTIONS = new Set(['唇'])
       if (sounds.size && !ok && !KNOWN_EXCEPTIONS.has(w.k)) problems.push(`음 불일치: ${w.k} "${ko}" (KANJIDIC: ${[...sounds].join(',')})`)
     }
+    const svgFile = join(SRC, 'kanjivg', 'kanji', `${w.k.codePointAt(0)!.toString(16).padStart(5, '0')}.svg`)
+    if (existsSync(svgFile)) {
+      const parts = parseParts(readFileSync(svgFile, 'utf8'))
+      const radNo = dic.get(w.k)?.rad ?? (w.old ? dic.get(w.old)?.rad : undefined)
+      const rad = radNo ? resolveRadical(radNo, parts, radicals) : undefined
+      partsOut[w.k] = { ...(rad ? { rad } : {}), parts }
+      collectElements(parts).forEach((e) => elements.add(e))
+    }
     const st = strokesFor(w.k)
     if (!st) problems.push(`획순 없음: ${w.k}`)
     else {
@@ -218,6 +233,18 @@ function main() {
   mkdirSync(OUT, { recursive: true })
   writeFileSync(join(OUT, 'kanji.json'), JSON.stringify(entries))
   writeFileSync(join(OUT, 'strokes.json'), JSON.stringify(strokes))
+
+  // 상용한자가 아닌 구성 요소(乡, 艮 …)의 한국 음과 영어 뜻 — 상용한자는 앱이 훈음을 직접 씀
+  const joyo = new Set(entries.map((e) => e.k))
+  const gloss: Record<string, { ko?: string; en?: string }> = {}
+  for (const el of elements) {
+    if (joyo.has(el)) continue
+    const d = dic.get(el)
+    if (!d) continue
+    gloss[el] = { ...(d.ko[0] ? { ko: d.ko[0] } : {}), ...(d.en[0] ? { en: d.en[0] } : {}) }
+  }
+  writeFileSync(join(OUT, 'parts.json'), JSON.stringify({ kanji: partsOut, gloss }))
+  console.log(`구성 요소: ${Object.keys(partsOut).length}자, 부수 있음 ${Object.values(partsOut).filter((x) => x.rad).length}자, 비상용 요소 ${Object.keys(gloss).length}개`)
 
   console.log(`상용한자 ${entries.length}자 생성`)
   const byGrade = entries.reduce<Record<number, number>>((a, e) => ((a[e.g] = (a[e.g] ?? 0) + 1), a), {})

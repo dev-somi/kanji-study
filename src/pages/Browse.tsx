@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { KanjiStructure } from '../components/KanjiStructure'
 import { Readings } from '../components/Readings'
 import { StrokeOrder } from '../components/StrokeOrder'
 import { GRADE_LABEL, kataToHira } from '../lib/data'
@@ -142,6 +143,7 @@ function KanjiSheet({ e, onClose }: { e: KanjiEntry; onClose: () => void }) {
           </div>
         </div>
         <Readings e={live} />
+        <KanjiStructure k={e.k} />
         <div className="card-status">
           {STAGES.map((s) => {
             const c = cards.get(cardKey(e.k, s))

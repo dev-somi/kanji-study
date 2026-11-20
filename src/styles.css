@@ -1100,3 +1100,168 @@ kbd {
   display: block;
   margin: 0 0 8px auto;
 }
+
+/* ---------- 구성 (부수·편방) ---------- */
+:root {
+  --p0: #2f6fd6;
+  --p1: #e8862a;
+  --p2: #2f9e44;
+  --p3: #8b5cf6;
+  --p4: #d6408b;
+  --p5: #0f9aa5;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --p0: #6d9cf0;
+    --p1: #f2a35c;
+    --p2: #5cc275;
+    --p3: #a98bf8;
+    --p4: #ec7ab3;
+    --p5: #4cc3cc;
+  }
+}
+.structure {
+  width: 100%;
+  max-width: 520px;
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.structure-toggle {
+  border: 0;
+  background: none;
+  padding: 0;
+  text-align: left;
+  width: 100%;
+}
+.structure-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.structure-head .section-title {
+  margin: 0;
+}
+.structure-head .chev {
+  margin-left: auto;
+  color: var(--ink-3);
+}
+.structure-overview {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+.structure-diagram {
+  flex: 0 0 auto;
+  width: 104px;
+  height: 104px;
+  background: var(--surface-2);
+  border-radius: 14px;
+  padding: 4px;
+}
+.structure-diagram path {
+  fill: none;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.structure-diagram path.pc-none {
+  stroke: var(--ink);
+}
+.structure-facts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.fact-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--ink-3);
+}
+.fact-main {
+  font-size: 1.1rem;
+  font-weight: 700;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.fact-main.num {
+  font-variant-numeric: tabular-nums;
+}
+.rad-form {
+  font-size: 1.4rem;
+  font-weight: 500;
+}
+.part-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.part-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}
+.part-row:first-child {
+  border-top: 0;
+}
+.part-char {
+  flex: 0 0 40px;
+  text-align: center;
+  font-size: 2rem;
+  line-height: 1;
+}
+.part-row:not(.d0) .part-char {
+  font-size: 1.5rem;
+}
+.part-info {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.part-gloss {
+  font-weight: 600;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.part-row:not(.d0) .part-gloss {
+  font-size: 0.85rem;
+}
+.part-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.pchip {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: color-mix(in srgb, currentColor 13%, transparent);
+}
+.pchip.plain {
+  color: var(--ink-2);
+  background: var(--surface-2);
+}
+.pchip.rad {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.pc0 { color: var(--p0); stroke: var(--p0); }
+.pc1 { color: var(--p1); stroke: var(--p1); }
+.pc2 { color: var(--p2); stroke: var(--p2); }
+.pc3 { color: var(--p3); stroke: var(--p3); }
+.pc4 { color: var(--p4); stroke: var(--p4); }
+.pc5 { color: var(--p5); stroke: var(--p5); }

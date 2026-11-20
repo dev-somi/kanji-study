@@ -39,3 +39,61 @@ export const GRADE_LABEL = (g: number) => (g <= 6 ? `${g}학년` : '중학 이�
 export function kataToHira(s: string) {
   return s.replace(/[ァ-ヶ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60))
 }
+
+// ---------- 구성 요소 ----------
+export type PartPosition = 'left' | 'right' | 'top' | 'bottom' | 'middle' | 'tare' | 'nyo' | 'kamae' | 'inside'
+export interface KanjiPart {
+  e: string // 글자 안에서 띤 자형 (亻)
+  o?: string // 변형이면 본래 글자 (人)
+  p?: PartPosition
+  r?: 1 // 부수
+  ph?: 1 // 음 요소
+  s: number[] // 획 번호 (1부터)
+  c?: KanjiPart[]
+}
+export interface Radical {
+  n: number
+  f: string
+  ko: string
+  ja: string
+}
+export interface PartsData {
+  kanji: Record<string, { rad?: Radical; parts: KanjiPart[] }>
+  gloss: Record<string, { ko?: string; en?: string }> // 상용한자 밖 요소
+}
+
+let partsPromise: Promise<PartsData> | null = null
+export function loadParts(): Promise<PartsData> {
+  partsPromise ??= fetch(`${base}data/parts.json`)
+    .then((r) => {
+      if (!r.ok) throw new Error(`parts.json ${r.status}`)
+      return r.json()
+    })
+    .catch((e) => {
+      partsPromise = null
+      throw e
+    })
+  return partsPromise
+}
+
+export const POSITION_LABEL: Record<PartPosition, string> = {
+  left: '왼쪽',
+  right: '오른쪽',
+  top: '위',
+  bottom: '아래',
+  middle: '가운데',
+  tare: '위→왼쪽 감쌈',
+  nyo: '왼쪽→아래 감쌈',
+  kamae: '둘러쌈',
+  inside: '안쪽',
+}
+/** 자리를 가리키는 일본어 용어 (偏과 旁을 합쳐 편방) */
+export const POSITION_TERM: Partial<Record<PartPosition, string>> = {
+  left: '偏 へん',
+  right: '旁 つくり',
+  top: '冠 かんむり',
+  bottom: '脚 あし',
+  tare: '垂 たれ',
+  nyo: '繞 にょう',
+  kamae: '構 かまえ',
+}
