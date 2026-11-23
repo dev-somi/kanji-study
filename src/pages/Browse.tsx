@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Examples } from '../components/Examples'
 import { KanjiStructure } from '../components/KanjiStructure'
 import { Readings } from '../components/Readings'
 import { StrokeOrder } from '../components/StrokeOrder'
@@ -14,7 +15,7 @@ function statusOf(c: CardRow | undefined): Status {
   return c.stability >= MATURE_STABILITY ? 'mature' : 'learning'
 }
 
-const GRADES = [1, 2, 3, 4, 5, 6, 7]
+const GRADES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 
 export function Browse() {
   const { kanji, cards } = useAppData()
@@ -143,6 +144,7 @@ function KanjiSheet({ e, onClose }: { e: KanjiEntry; onClose: () => void }) {
           </div>
         </div>
         <Readings e={live} />
+        <Examples k={e.k} old={e.old} />
         <KanjiStructure k={e.k} />
         <div className="card-status">
           {STAGES.map((s) => {

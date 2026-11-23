@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { DrawPad, type DrawPadHandle } from '../components/DrawPad'
+import { Examples } from '../components/Examples'
 import { KanjiStructure } from '../components/KanjiStructure'
 import { Readings } from '../components/Readings'
 import { StrokeOrder } from '../components/StrokeOrder'
-import { GRADE_LABEL, loadParts, loadStrokes } from '../lib/data'
+import { GRADE_LABEL, loadParts, loadStrokes, loadWords } from '../lib/data'
 import { addExtraNew, db, getExtraNew, withExtraNew } from '../lib/db'
 import { gradeCard, undoGrade, type UndoToken } from '../lib/repo'
 import {
@@ -42,6 +43,7 @@ export function Study({ stage, mode, onExit }: { stage: Stage; mode: StudyMode; 
   const [overlay, setOverlay] = useState<string[] | undefined>()
   const [showOverlay, setShowOverlay] = useState(true)
   const [hint, setHint] = useState(false)
+  const [wordHint, setWordHint] = useState(false)
   const pad = useRef<DrawPadHandle>(null)
 
   // 큐는 DB 에서 직접 읽어 계산 (live query 반영 지연과 무관하게 정확히)
@@ -64,6 +66,7 @@ export function Study({ stage, mode, onExit }: { stage: Stage; mode: StudyMode; 
       setCurrent(pickNext(q, avoid))
       setRevealed(false)
       setHint(false)
+      setWordHint(false)
       setOverlay(undefined)
       setStrokeCount(0)
       pad.current?.clear()
@@ -76,6 +79,7 @@ export function Study({ stage, mode, onExit }: { stage: Stage; mode: StudyMode; 
     // 획순 데이터 미리 받아두기
     void loadStrokes().catch(() => {})
     void loadParts().catch(() => {})
+    void loadWords().catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -248,10 +252,20 @@ export function Study({ stage, mode, onExit }: { stage: Stage; mode: StudyMode; 
                   {entry.s}획 · {GRADE_LABEL(entry.g)}
                 </div>
               )}
-              {!hint && !revealed && (
-                <button className="link-btn small" onClick={() => setHint(true)}>
-                  힌트 (획수)
-                </button>
+              {wordHint && !revealed && <Examples k={entry.k} hangulOnly />}
+              {!revealed && (!hint || !wordHint) && (
+                <div className="hint-btns">
+                  {!hint && (
+                    <button className="link-btn small" onClick={() => setHint(true)}>
+                      힌트 (획수)
+                    </button>
+                  )}
+                  {!wordHint && (
+                    <button className="link-btn small" onClick={() => setWordHint(true)}>
+                      힌트 (단어)
+                    </button>
+                  )}
+                </div>
               )}
             </div>
 
@@ -280,6 +294,7 @@ export function Study({ stage, mode, onExit }: { stage: Stage; mode: StudyMode; 
               )}
             </div>
             {revealed && <Readings e={entry} compact />}
+            {revealed && <Examples k={entry.k} old={entry.old} collapsible />}
             {revealed && <KanjiStructure k={entry.k} collapsible />}
           </>
         ) : (
@@ -303,6 +318,7 @@ export function Study({ stage, mode, onExit }: { stage: Stage; mode: StudyMode; 
                   )}
                 </div>
                 {entry.en && <div className="muted small">{entry.en}</div>}
+                <Examples k={entry.k} old={entry.old} collapsible />
                 <KanjiStructure k={entry.k} collapsible />
               </div>
             )}

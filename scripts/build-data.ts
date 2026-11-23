@@ -5,14 +5,17 @@
  *   - kanjidic/kanjidic2.xml: KANJIDIC2 (EDRDG, CC BY-SA) → 빈도, 한국 음(검증용), 영어 뜻
  *   - kanjivg/kanji/*.svg   : KanjiVG (CC BY-SA) → 획순 path
  *   - scripts/korean/*.tsv  : 한국어 훈음 (한자\t훈음)
+ *   - scripts/data/kanken.tsv: 중학 이상 한자의 漢検 급수 (Kanjium, CC BY-SA) → 중1~고3
  *  출력
  *   - public/data/kanji.json
  *   - public/data/strokes.json
  *   - public/data/parts.json   : 구성 요소 트리 + 부수 + 상용한자 밖 요소의 음·뜻
+ *   - public/data/words.json   : 한국어·일본어 예시 단어 (scripts/words/*.tsv, JMdict로 검증)
  */
 import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { collectElements, loadRadicals, parseParts, resolveRadical, type PartOut, type RadicalOut } from './structure'
+import { checkJa, checkKo, initialLaw, loadJmdict, loadWordFiles, soundsOfKo, type JaWord, type KoWord } from './words'
 
 const ROOT = join(import.meta.dirname, '..')
 const SRC = join(ROOT, 'data-src')
@@ -22,7 +25,7 @@ export interface KanjiEntry {
   id: number // 학습 순서 (0부터)
   k: string // 신자체
   old?: string // 旧字体 (한국 정자와 대부분 일치)
-  g: number // 학년 1~6, 7 = 중학교 이상
+  g: number // 학년 1~6 = 초1~초6, 7~12 = 중1~고3 (漢検 급수로 나눔)
   s: number // 총획수
   on: string[] // 음독 (가타카나)
   kun: string[] // 훈독 (히라가나, 送り仮名는 '-' 뒤)
@@ -172,6 +175,8 @@ function main() {
   const partsOut: Record<string, { rad?: RadicalOut; parts: PartOut[] }> = {}
   const elements = new Set<string>()
 
+  assignUpperGrades(wiki, dic)
+
   // 학년 → 같은 학년 안에서는 빈도순 (빈도 없으면 뒤로)
   const sorted = [...wiki].sort((a, b) => {
     if (a.g !== b.g) return a.g - b.g
@@ -246,6 +251,8 @@ function main() {
   writeFileSync(join(OUT, 'parts.json'), JSON.stringify({ kanji: partsOut, gloss }))
   console.log(`구성 요소: ${Object.keys(partsOut).length}자, 부수 있음 ${Object.values(partsOut).filter((x) => x.rad).length}자, 비상용 요소 ${Object.keys(gloss).length}개`)
 
+  buildWords(entries, dic, problems)
+
   console.log(`상용한자 ${entries.length}자 생성`)
   const byGrade = entries.reduce<Record<number, number>>((a, e) => ((a[e.g] = (a[e.g] ?? 0) + 1), a), {})
   console.log('학년별:', byGrade)
@@ -271,19 +278,91 @@ function main() {
   }
 }
 
-/** 두음법칙: 첫소리 ㄹ→ㄴ/ㅇ, ㄴ→ㅇ */
-function initialLaw(syl: string): string {
-  const code = syl.charCodeAt(0) - 0xac00
-  if (code < 0 || code > 11171) return syl
-  const cho = Math.floor(code / 588)
-  const jung = Math.floor((code % 588) / 28)
-  const jong = code % 28
-  // ㅑ ㅕ ㅖ ㅛ ㅠ ㅣ 앞에서는 ㅇ, 그 외 ㄹ→ㄴ
-  const iotized = [2, 6, 7, 12, 17, 20].includes(jung)
-  let newCho = cho
-  if (cho === 5) newCho = iotized ? 11 : 2 // ㄹ
-  else if (cho === 2 && iotized) newCho = 11 // ㄴ
-  return String.fromCharCode(0xac00 + newCho * 588 + jung * 28 + jong)
+// ---------- 5. 중학 이상 → 중1~고3 ----------
+/**
+ * 일본에는 중학 이상 1110자의 학년별 배당이 없으므로 漢検 급수로 나눈다.
+ *  4급(중학 재학) → 빈도순 앞 절반 중1(7), 뒤 절반 중2(8)
+ *  3급(중학 졸업) → 중3(9)
+ *  준2급(고교 재학) → 빈도순 앞 절반 고1(10), 뒤 절반 고2(11)
+ *  2급(고교 졸업) → 고3(12)
+ */
+function assignUpperGrades(rows: WikiRow[], dic: Map<string, DicInfo>) {
+  const level = new Map<string, string>()
+  for (const line of readFileSync(join(ROOT, 'scripts', 'data', 'kanken.tsv'), 'utf8').split('\n')) {
+    if (!line || line.startsWith('#')) continue
+    const [k, lv] = line.split('\t')
+    level.set(k, lv.trim())
+  }
+  const freq = (r: WikiRow) => dic.get(r.k)?.freq ?? (r.old ? dic.get(r.old)?.freq : undefined) ?? 9999
+  const byLevel = new Map<string, WikiRow[]>()
+  for (const r of rows) {
+    if (r.g !== 7) continue
+    const lv = level.get(r.k)
+    if (!lv) throw new Error(`漢検 급수 없음: ${r.k}`)
+    byLevel.set(lv, [...(byLevel.get(lv) ?? []), r])
+  }
+  const split = (list: WikiRow[] | undefined, first: number, second?: number) => {
+    const sorted = [...(list ?? [])].sort((a, b) => freq(a) - freq(b))
+    const half = second ? Math.ceil(sorted.length / 2) : sorted.length
+    sorted.forEach((r, i) => (r.g = i < half ? first : second!))
+  }
+  split(byLevel.get('4'), 7, 8)
+  split(byLevel.get('3'), 9)
+  split(byLevel.get('準2'), 10, 11)
+  split(byLevel.get('2'), 12)
+}
+
+// ---------- 6. 예시 단어 ----------
+function buildWords(entries: KanjiEntry[], dic: Map<string, DicInfo>, problems: string[]) {
+  const dir = join(ROOT, 'scripts', 'words')
+  const ko = loadWordFiles(dir, 'ko')
+  const ja = loadWordFiles(dir, 'ja')
+  const jmFile = existsSync(join(SRC, 'jmdict'))
+    ? readdirSync(join(SRC, 'jmdict')).find((f) => /^jmdict-eng-.*\.json$/.test(f))
+    : undefined
+  const jm = jmFile ? loadJmdict(join(SRC, 'jmdict', jmFile)) : undefined
+  if (!jm) console.log('JMdict 없음 → 일본어 예시의 사전 대조는 건너뜀 (scripts/fetch-sources.sh)')
+
+  // 한자 → 한국 음: 상용한자 훈음(신자체·정자 모두) + KANJIDIC
+  const sounds = new Map<string, Set<string>>()
+  const addSound = (c: string, xs: string[]) => {
+    const set = sounds.get(c) ?? new Set()
+    xs.forEach((x) => set.add(x))
+    sounds.set(c, set)
+  }
+  for (const e of entries) {
+    addSound(e.k, soundsOfKo(e.ko))
+    if (e.old) addSound(e.old, soundsOfKo(e.ko))
+  }
+  for (const [c, d] of dic) addSound(c, d.ko)
+  const soundsOf = (c: string) => [...(sounds.get(c) ?? [])]
+
+  const out: Record<string, { ko: KoWord[]; ja: JaWord[] }> = {}
+  const joyo = new Set(entries.map((e) => e.k))
+  const oldOf = new Map(entries.filter((e) => e.old).map((e) => [e.k, e.old!]))
+  let missing = 0
+  let warns = 0
+  for (const e of entries) {
+    const targets = e.old ? [e.k, e.old] : [e.k]
+    // 한국어 한자표기는 신자체로 써도 됨 → 상용한자 정자(旧字体)로 바꿔 저장 (学校 → 學校)
+    const koList = (ko.get(e.k) ?? []).map(([h, w]) => [h, [...w].map((c) => oldOf.get(c) ?? c).join('')] as KoWord)
+    const jaList = (ja.get(e.k) ?? []).map((r) => r.slice(0, 3) as JaWord)
+    if (!koList.length || !jaList.length) missing++
+    for (const w of koList) {
+      const err = checkKo(targets, w, soundsOf)
+      if (err) problems.push(`예시(ko) ${e.k} ${w.join(' ')}: ${err}`)
+    }
+    for (const w of jaList) {
+      const { error, warn } = checkJa(targets, w, jm)
+      if (error) problems.push(`예시(ja) ${e.k} ${w.slice(0, 2).join(' ')}: ${error}`)
+      if (warn) warns++
+      if (warn && process.argv.includes('--warn')) console.log(` · 예시(ja) ${e.k} ${w.slice(0, 2).join(' ')}: ${warn}`)
+    }
+    if (koList.length || jaList.length) out[e.k] = { ko: koList.slice(0, 3), ja: jaList.slice(0, 3) }
+  }
+  for (const k of new Set([...ko.keys(), ...ja.keys()])) if (!joyo.has(k)) problems.push(`예시: 상용한자가 아님 ${k}`)
+  writeFileSync(join(OUT, 'words.json'), JSON.stringify(out))
+  console.log(`예시 단어: ${Object.keys(out).length}자, 예시 없음(한쪽이라도) ${missing}자, 흔하지 않은 일본어 ${warns}개 (--warn 으로 목록)`)
 }
 
 main()

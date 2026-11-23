@@ -1265,3 +1265,53 @@ kbd {
 .pc3 { color: var(--p3); stroke: var(--p3); }
 .pc4 { color: var(--p4); stroke: var(--p4); }
 .pc5 { color: var(--p5); stroke: var(--p5); }
+
+/* 예시 단어 */
+.hint-btns {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+}
+.examples-hint {
+  font-size: 1.05rem;
+}
+.ex-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ex-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ex-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 10px;
+}
+.ex-main {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.ex-main[lang='ja'] {
+  font-family: var(--font-ja);
+}
+.ex-sub {
+  color: var(--ink-2);
+}
+.ex-sub[lang='ja'] {
+  font-family: var(--font-ja);
+}
+.ex-mean {
+  color: var(--ink-3);
+  font-size: 0.9rem;
+}
+.ex-hit {
+  color: var(--accent);
+  font-weight: 700;
+}

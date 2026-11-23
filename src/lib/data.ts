@@ -33,7 +33,9 @@ export function splitKun(r: string): { stem: string; okuri: string } {
   return { stem: r.slice(0, i), okuri: r.slice(i + 1) }
 }
 
-export const GRADE_LABEL = (g: number) => (g <= 6 ? `${g}학년` : '중학 이상')
+const UPPER = ['중1', '중2', '중3', '고1', '고2', '고3']
+/** 1~6 → 초1~초6, 7~12 → 중1~고3 */
+export const GRADE_LABEL = (g: number) => (g <= 6 ? `초${g}` : (UPPER[g - 7] ?? '중학 이상'))
 
 /** 검색용: 가타카나 → 히라가나 */
 export function kataToHira(s: string) {
@@ -96,4 +98,24 @@ export const POSITION_TERM: Partial<Record<PartPosition, string>> = {
   tare: '垂 たれ',
   nyo: '繞 にょう',
   kamae: '構 かまえ',
+}
+
+// ---------- 예시 단어 ----------
+export interface WordsData {
+  /** ko: [한글, 한자(한국 정자)], ja: [단어, 읽기, 한국어 뜻] */
+  [k: string]: { ko: [string, string][]; ja: [string, string, string][] }
+}
+
+let wordsPromise: Promise<WordsData> | null = null
+export function loadWords(): Promise<WordsData> {
+  wordsPromise ??= fetch(`${base}data/words.json`)
+    .then((r) => {
+      if (!r.ok) throw new Error(`words.json ${r.status}`)
+      return r.json()
+    })
+    .catch((e) => {
+      wordsPromise = null
+      throw e
+    })
+  return wordsPromise
 }

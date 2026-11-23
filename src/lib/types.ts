@@ -2,7 +2,7 @@ export interface KanjiEntry {
   id: number // 학습 순서
   k: string // 신자체 (일본 현행 글자)
   old?: string // 旧字体 (한국 정자와 대부분 일치)
-  g: number // 학년 1~6, 7 = 중학교 이상
+  g: number // 학년 1~6 = 초1~초6, 7~12 = 중1~고3
   s: number // 총획수
   on: string[] // 음독
   kun: string[] // 훈독 ('-' 뒤가 送り仮名)
