@@ -96,7 +96,8 @@ function parseWiki(): WikiRow[] {
     const s = parseInt(cleanCell(cells[4]).trim(), 10)
     const gradeRaw = cleanCell(cells[5]).trim()
     const g = /^[1-6]$/.test(gradeRaw) ? parseInt(gradeRaw, 10) : 7
-    const readingText = cleanCell(cells[8])
+    // 표의 마지막 행은 표 닫는 줄(|})과 다음 절까지 딸려 오므로 첫 줄만 씀
+    const readingText = cleanCell(cells[8].split('\n')[0])
       .replace(/<[^>]+>/g, '')
       .replace(/\{\{[^}]*\}\}/g, '')
       .trim()
