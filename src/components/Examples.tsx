@@ -60,7 +60,7 @@ export function Examples({
     const list = words?.ko ?? []
     return (
       <div className="prompt-hint examples-hint" lang="ko">
-        {list.length ? list.map(([h]) => h).join(' · ') : '예시 단어가 아직 없어요'}
+        {list.length ? list.map(([h]) => h).join(' · ') : '한국어에서는 잘 쓰지 않는 글자예요'}
       </div>
     )
   }

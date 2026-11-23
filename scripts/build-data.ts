@@ -341,14 +341,15 @@ function buildWords(entries: KanjiEntry[], dic: Map<string, DicInfo>, problems: 
   const out: Record<string, { ko: KoWord[]; ja: JaWord[] }> = {}
   const joyo = new Set(entries.map((e) => e.k))
   const oldOf = new Map(entries.filter((e) => e.old).map((e) => [e.k, e.old!]))
-  let missing = 0
+  const noKo: string[] = [] // 한국어에서 거의 쓰지 않는 글자 (畑, 込 …) — 정상
   let warns = 0
   for (const e of entries) {
     const targets = e.old ? [e.k, e.old] : [e.k]
     // 한국어 한자표기는 신자체로 써도 됨 → 상용한자 정자(旧字体)로 바꿔 저장 (学校 → 學校)
     const koList = (ko.get(e.k) ?? []).map(([h, w]) => [h, [...w].map((c) => oldOf.get(c) ?? c).join('')] as KoWord)
     const jaList = (ja.get(e.k) ?? []).map((r) => r.slice(0, 3) as JaWord)
-    if (!koList.length || !jaList.length) missing++
+    if (!jaList.length) problems.push(`예시(ja) 없음: ${e.k}`)
+    if (!koList.length) noKo.push(e.k)
     for (const w of koList) {
       const err = checkKo(targets, w, soundsOf)
       if (err) problems.push(`예시(ko) ${e.k} ${w.join(' ')}: ${err}`)
@@ -363,7 +364,8 @@ function buildWords(entries: KanjiEntry[], dic: Map<string, DicInfo>, problems: 
   }
   for (const k of new Set([...ko.keys(), ...ja.keys()])) if (!joyo.has(k)) problems.push(`예시: 상용한자가 아님 ${k}`)
   writeFileSync(join(OUT, 'words.json'), JSON.stringify(out))
-  console.log(`예시 단어: ${Object.keys(out).length}자, 예시 없음(한쪽이라도) ${missing}자, 흔하지 않은 일본어 ${warns}개 (--warn 으로 목록)`)
+  console.log(`예시 단어: ${Object.keys(out).length}자, 한국어 예시 없는 글자 ${noKo.length}자, 흔하지 않은 일본어 ${warns}개 (--warn 으로 목록)`)
+  if (process.argv.includes('--warn')) console.log(` · 한국어 예시 없음: ${noKo.join('')}`)
 }
 
 main()
