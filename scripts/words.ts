@@ -50,6 +50,9 @@ export function soundMatches(s: string, sounds: Iterable<string>): boolean {
   return false
 }
 
+/** 속음(활음조 등)으로 한자 본음과 다르게 읽는 단어 */
+const SOUND_EXCEPTIONS = new Set(['곤란', '폐렴', '허락', '대로', '유월', '시월', '모란', '오륙도', '희로애락', '보리', '도량'])
+
 /** 한국어 예시 한 줄 검증. 문제가 없으면 undefined */
 export function checkKo(
   targets: string[],
@@ -60,6 +63,7 @@ export function checkKo(
   const cs = [...hanja]
   if (!cs.some((c) => targets.includes(c))) return '대상 글자 없음'
   if (hs.length !== cs.length) return `글자 수 다름 (${hs.length}≠${cs.length})`
+  if (SOUND_EXCEPTIONS.has(hangul)) return undefined
   const bad: string[] = []
   cs.forEach((c, i) => {
     const sounds = soundsOf(c)
