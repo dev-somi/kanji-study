@@ -44,6 +44,7 @@ export function Study({ stage, mode, onExit }: { stage: Stage; mode: StudyMode; 
   const [showOverlay, setShowOverlay] = useState(true)
   const [hint, setHint] = useState(false)
   const [wordHint, setWordHint] = useState(false)
+  const [jaHint, setJaHint] = useState(false)
   const pad = useRef<DrawPadHandle>(null)
 
   // 큐는 DB 에서 직접 읽어 계산 (live query 반영 지연과 무관하게 정확히)
@@ -67,6 +68,7 @@ export function Study({ stage, mode, onExit }: { stage: Stage; mode: StudyMode; 
       setRevealed(false)
       setHint(false)
       setWordHint(false)
+      setJaHint(false)
       setOverlay(undefined)
       setStrokeCount(0)
       pad.current?.clear()
@@ -252,8 +254,9 @@ export function Study({ stage, mode, onExit }: { stage: Stage; mode: StudyMode; 
                   {entry.s}획 · {GRADE_LABEL(entry.g)}
                 </div>
               )}
-              {wordHint && !revealed && <Examples k={entry.k} hangulOnly />}
-              {!revealed && (!hint || !wordHint) && (
+              {wordHint && !revealed && <Examples k={entry.k} hint="ko" />}
+              {jaHint && !revealed && <Examples k={entry.k} hint="ja" />}
+              {!revealed && (!hint || !wordHint || !jaHint) && (
                 <div className="hint-btns">
                   {!hint && (
                     <button className="link-btn small" onClick={() => setHint(true)}>
@@ -262,7 +265,12 @@ export function Study({ stage, mode, onExit }: { stage: Stage; mode: StudyMode; 
                   )}
                   {!wordHint && (
                     <button className="link-btn small" onClick={() => setWordHint(true)}>
-                      힌트 (단어)
+                      힌트 (한국어)
+                    </button>
+                  )}
+                  {!jaHint && (
+                    <button className="link-btn small" onClick={() => setJaHint(true)}>
+                      힌트 (일본어)
                     </button>
                   )}
                 </div>

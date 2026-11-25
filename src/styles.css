@@ -1269,11 +1269,16 @@ kbd {
 /* 예시 단어 */
 .hint-btns {
   display: flex;
+  flex-wrap: wrap;
   gap: 14px;
   justify-content: center;
 }
 .examples-hint {
   font-size: 1.05rem;
+}
+.hint-tag {
+  font-size: 0.75rem;
+  margin-right: 6px;
 }
 .ex-group {
   display: flex;

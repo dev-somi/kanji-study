@@ -29,17 +29,18 @@ function Hit({ word, targets }: { word: string; targets: string[] }) {
 
 /**
  * 예시 단어: 한국어 한자어(학교 學校)와 일본어 단어(学校 がっこう 학교).
- * hangulOnly: 쓰기 단계 힌트 — 한자를 드러내지 않도록 한국어 단어의 한글만 보여 줌
+ * hint: 쓰기 단계 힌트 — 한자를 드러내지 않도록
+ *   'ko' 한국어 단어의 한글만, 'ja' 일본어 단어의 한국어 뜻만 보여 줌
  */
 export function Examples({
   k,
   old,
-  hangulOnly = false,
+  hint,
   collapsible = false,
 }: {
   k: string
   old?: string
-  hangulOnly?: boolean
+  hint?: 'ko' | 'ja'
   collapsible?: boolean
 }) {
   const [data, setData] = useState<WordsData | null>(null)
@@ -56,11 +57,13 @@ export function Examples({
   const words = data?.[k]
   if (!data) return null
 
-  if (hangulOnly) {
-    const list = words?.ko ?? []
+  if (hint) {
+    const list = hint === 'ko' ? (words?.ko ?? []).map(([h]) => h) : (words?.ja ?? []).map(([, , m]) => m)
+    const empty = hint === 'ko' ? '한국어에서는 잘 쓰지 않는 글자예요' : '일본어 예시 단어가 없어요'
     return (
       <div className="prompt-hint examples-hint" lang="ko">
-        {list.length ? list.map(([h]) => h).join(' · ') : '한국어에서는 잘 쓰지 않는 글자예요'}
+        <span className="hint-tag muted">{hint === 'ko' ? '한' : '일'}</span>
+        {list.length ? list.join(' · ') : empty}
       </div>
     )
   }
